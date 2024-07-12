@@ -1,0 +1,6 @@
+camelsplit==1.0.1
+funcy==2.0
+GitPython==3.1.43
+GitPython==3.1.43
+pandas==2.2.2
+Requests==2.32.3
