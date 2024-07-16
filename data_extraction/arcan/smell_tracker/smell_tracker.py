@@ -48,13 +48,13 @@ def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: s
                         {
                             "versionId": row["versionId"],
                             "characteristics": write_characteristics(row, smell_characteristics_keep),
-                            "ATDI_var": check_atdi_variation(row["ATDI"],
-                                                             smell["characteristics_by_version"][-1]["characteristics"][
+                            "ATDI_var": check_atd_variation(row["ATDI"],
+                                                            smell["characteristics_by_version"][-1]["characteristics"][
                                                                  "ATDI"],
-                                                             row["versionId"],
-                                                             smell["characteristics_by_version"][-1]["versionId"],
-                                                             row["AffectedElements"], repo_path, language,
-                                                             row["AffectedComponentType"])
+                                                            row["versionId"],
+                                                            smell["characteristics_by_version"][-1]["versionId"],
+                                                            row["AffectedElements"], repo_path, language,
+                                                            row["AffectedComponentType"])
                         }
                     )
 
@@ -77,8 +77,10 @@ def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: s
                 }
             )
 
-        if row["versionId"] != first_version_id:
-            smells_tracker[-1]["new"] = "NEW"
+            if row["versionId"] != first_version_id:
+                smells_tracker[-1]["characteristics_by_version"][-1]["ATDI_var"] = (
+                    check_atd_variation(row["ATDI"], 0, row["versionId"], old_version_id, row["AffectedElements"],
+                                        repo_path, language, row["AffectedComponentType"]))
 
         if row["versionId"] != old_version_id:
             versions_analysed += 1
@@ -117,14 +119,16 @@ def write_characteristics(row, smell_characteristics_keep):
     return smell_characteristics
 
 
-def check_atdi_variation(current_atdi: float, old_atdi: float, current_version_id: str, old_version_id: str,
-                         components_affected: str, repo_path: str, language: str, component_type: str):
+def check_atd_variation(current_atdi: float, old_atdi: float, current_version_id: str, old_version_id: str,
+                        components_affected: str, repo_path: str, language: str, component_type: str):
     atdi_var: dict = {}
 
     if math.isclose(current_atdi, old_atdi):
         atdi_var["variation"] = "SAME"
     else:
-        if current_atdi < old_atdi:
+        if old_atdi == 0:
+            atdi_var["variation"] = "NEW"
+        elif current_atdi < old_atdi:
             atdi_var["variation"] = "DOWN"
         elif current_atdi > old_atdi:
             atdi_var["variation"] = "UP"
