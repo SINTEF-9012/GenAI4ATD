@@ -2,7 +2,7 @@ import math
 import pandas as pd
 import json
 import common.utils as utils
-import data_extraction.arcan.smell_tracker.get_diff as get_diff
+import common.file_management as file_management
 import data_extraction.arcan.smell_tracker.get_commit_history as get_commit_history
 import data_extraction.arcan.smell_tracker.generate_examples as generate_examples
 
@@ -50,7 +50,7 @@ def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: s
                             "characteristics": write_characteristics(row, smell_characteristics_keep),
                             "ATDI_var": check_atd_variation(row["ATDI"],
                                                             smell["characteristics_by_version"][-1]["characteristics"][
-                                                                 "ATDI"],
+                                                                "ATDI"],
                                                             row["versionId"],
                                                             smell["characteristics_by_version"][-1]["versionId"],
                                                             row["AffectedElements"], repo_path, language,
@@ -134,13 +134,20 @@ def check_atd_variation(current_atdi: float, old_atdi: float, current_version_id
             atdi_var["variation"] = "UP"
 
         if component_type == "CONTAINER":
-            atdi_var["diffs"] = "No diff for containers"
-            atdi_var["commit_history"] = "No commit history for containers"
+            # atdi_var["diffs"] = "No diff for containers"
+            # atdi_var["commit_history"] = "No commit history for containers"
+            unit_list: list = file_management.get_unit_list_from_container_list(components_affected,
+                                                                                repo_path, language)
         else:
-            atdi_var["diffs"] = get_diff.get_diff_all_components(current_version_id, old_version_id,
-                                                                 components_affected,
-                                                                 repo_path, language)
-            atdi_var["commit_history"] = get_commit_history.get_commits_history_all_component(old_version_id, current_version_id,
-                                                                           components_affected, repo_path, language)
+            unit_list: list = file_management.get_components_as_paths_list(components_affected, repo_path, language,
+                                                                           True)
+
+        # atdi_var["diffs"] = get_diff.get_diff_all_components(current_version_id, old_version_id,
+        #                                                     components_affected,
+        #                                                     repo_path, language)
+        atdi_var["commit_history"] = get_commit_history.get_commits_history_all_component(old_version_id,
+                                                                                          current_version_id,
+                                                                                          unit_list,
+                                                                                          repo_path, language)
 
     return atdi_var

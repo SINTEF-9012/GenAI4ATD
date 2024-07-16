@@ -7,7 +7,7 @@ def get_loc_all_dependencies(location_list: str, unit: str, path_main_packages: 
     if language != "JAVA" and language != "CSHARP":
         raise AttributeError("Language unsupported")
 
-    unit_path: str = file_management.convert_unit_to_path(unit, language)
+    unit_path: str = file_management.convert_component_to_path(unit, language, True)
 
     dependencies_list: list = location_list.split(";")
     loc_list: list = []
