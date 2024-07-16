@@ -37,6 +37,8 @@ def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: s
     old_version_id: str = ""
     first_version_id: str = smell_characteristics.iloc[0]["versionId"]
 
+    smell_is_known: bool = False
+
     for index, row in smell_characteristics.iterrows():
         if len(smells_tracker) != 0:
             for smell in smells_tracker:
@@ -56,21 +58,24 @@ def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: s
                         }
                     )
 
+                    smell_is_known = True
+
                     break
 
-        smells_tracker.append(
-            {
-                "type": row["smellType"],
-                "components_affected": row["AffectedElements"],
-                "type_components_affected": row["AffectedComponentType"],
-                "characteristics_by_version": [
-                    {
-                        "versionId": row["versionId"],
-                        "characteristics": write_characteristics(row, smell_characteristics_keep)
-                    }
-                ]
-            }
-        )
+        if len(smells_tracker) == 0 or not smell_is_known:
+            smells_tracker.append(
+                {
+                    "type": row["smellType"],
+                    "components_affected": row["AffectedElements"],
+                    "type_components_affected": row["AffectedComponentType"],
+                    "characteristics_by_version": [
+                        {
+                            "versionId": row["versionId"],
+                            "characteristics": write_characteristics(row, smell_characteristics_keep)
+                        }
+                    ]
+                }
+            )
 
         if row["versionId"] != first_version_id:
             smells_tracker[-1]["new"] = "NEW"
@@ -79,6 +84,8 @@ def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: s
             versions_analysed += 1
 
         old_version_id = row["versionId"]
+
+        smell_is_known = False
 
         print(row["vertexId"])
 
