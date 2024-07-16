@@ -35,6 +35,7 @@ def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: s
     versions_analysed = 0
 
     old_version_id: str = ""
+    first_version_id: str = smell_characteristics.iloc[0]["versionId"]
 
     for index, row in smell_characteristics.iterrows():
         if len(smells_tracker) != 0:
@@ -70,6 +71,9 @@ def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: s
                 ]
             }
         )
+
+        if row["versionId"] != first_version_id:
+            smells_tracker[-1]["new"] = "NEW"
 
         if row["versionId"] != old_version_id:
             versions_analysed += 1
