@@ -5,16 +5,17 @@ import common.utils as utils
 import common.file_management as file_management
 import data_extraction.arcan.smell_tracker.get_commit_history as get_commit_history
 import data_extraction.arcan.smell_tracker.generate_examples as generate_examples
+import data_extraction.arcan.smell_tracker.get_diff as get_diff
 
 
-def main(input_path: str, output_path: str, repo_path: str, language: str, only_last_ver=False, number_of_ver=1000,
-         example=False):
+def main(input_path: str, output_path: str, repo_path: str, language: str, atdi_var_diff: bool=False,
+         atdi_var_commit_history: bool=False, only_last_ver=False, number_of_ver=1000, example=False):
     smell_characteristics_keep: list = ["vertexId", "ATDI", "Severity", "Size", "LOCDensity", "NumberOfEdge"]
 
     smell_characteristics = pd.read_csv(input_path + "smell-characteristics.csv", sep=',')
 
     smells_tracker: list = track_smells(smell_characteristics, smell_characteristics_keep, repo_path, language,
-                                        number_of_ver)
+                                        number_of_ver, atdi_var_diff, atdi_var_commit_history)
 
     # if only_last_ver:
     #    smells_tracker = keep_only_last_ver(smell_characteristics, smells_tracker)
@@ -29,12 +30,14 @@ def main(input_path: str, output_path: str, repo_path: str, language: str, only_
     file.write(json.dumps(smells_tracker))
 
 
-def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: str, language: str, number_of_ver: int):
+def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: str, language: str, number_of_ver: int,
+                 atdi_var_diff: bool, atdi_var_commit_history: bool):
     smells_tracker: list = []
 
     versions_analysed = 0
 
-    old_version_id: str = ""
+    previous_version_id: str = ""
+    previous_smell_version_id: str = "" # different from previous_version_id
     first_version_id: str = smell_characteristics.iloc[0]["versionId"]
 
     smell_is_known: bool = False
@@ -54,7 +57,8 @@ def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: s
                                                             row["versionId"],
                                                             smell["characteristics_by_version"][-1]["versionId"],
                                                             row["AffectedElements"], repo_path, language,
-                                                            row["AffectedComponentType"])
+                                                            row["AffectedComponentType"], atdi_var_diff,
+                                                            atdi_var_commit_history)
                         }
                     )
 
@@ -79,13 +83,15 @@ def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: s
 
             if row["versionId"] != first_version_id:
                 smells_tracker[-1]["characteristics_by_version"][-1]["ATDI_var"] = (
-                    check_atd_variation(row["ATDI"], 0, row["versionId"], old_version_id, row["AffectedElements"],
-                                        repo_path, language, row["AffectedComponentType"]))
+                    check_atd_variation(row["ATDI"], 0, row["versionId"], previous_version_id, row["AffectedElements"],
+                                        repo_path, language, row["AffectedComponentType"], atdi_var_diff,
+                                        atdi_var_commit_history))
 
-        if row["versionId"] != old_version_id:
+        if row["versionId"] != previous_smell_version_id:
             versions_analysed += 1
+            previous_version_id = previous_smell_version_id
 
-        old_version_id = row["versionId"]
+        previous_smell_version_id = row["versionId"]
 
         smell_is_known = False
 
@@ -120,7 +126,8 @@ def write_characteristics(row, smell_characteristics_keep):
 
 
 def check_atd_variation(current_atdi: float, old_atdi: float, current_version_id: str, old_version_id: str,
-                        components_affected: str, repo_path: str, language: str, component_type: str):
+                        components_affected: str, repo_path: str, language: str, component_type: str, diff: bool,
+                        commit_history: bool):
     atdi_var: dict = {}
 
     if math.isclose(current_atdi, old_atdi):
@@ -133,21 +140,24 @@ def check_atd_variation(current_atdi: float, old_atdi: float, current_version_id
         elif current_atdi > old_atdi:
             atdi_var["variation"] = "UP"
 
-        if component_type == "CONTAINER":
-            # atdi_var["diffs"] = "No diff for containers"
-            # atdi_var["commit_history"] = "No commit history for containers"
-            unit_list: list = file_management.get_unit_list_from_container_list(components_affected,
-                                                                                repo_path, language)
-        else:
-            unit_list: list = file_management.get_components_as_paths_list(components_affected, repo_path, language,
-                                                                           True)
+        if diff or commit_history:
+            if component_type == "CONTAINER":
+                # atdi_var["diffs"] = "No diff for containers"
+                # atdi_var["commit_history"] = "No commit history for containers"
+                unit_list: list = file_management.get_unit_list_from_container_list(components_affected,
+                                                                                    repo_path, language)
+            else:
+                unit_list: list = file_management.get_components_as_paths_list(components_affected, repo_path, language,
+                                                                               True)
 
-        # atdi_var["diffs"] = get_diff.get_diff_all_components(current_version_id, old_version_id,
-        #                                                     components_affected,
-        #                                                     repo_path, language)
-        atdi_var["commit_history"] = get_commit_history.get_commits_history_all_units(old_version_id,
-                                                                                      current_version_id,
-                                                                                      unit_list,
-                                                                                      repo_path)
+            if diff:
+                atdi_var["diffs"] = get_diff.get_diff_all_units(current_version_id, old_version_id,unit_list, repo_path,
+                                                                language)
+
+            if commit_history:
+                atdi_var["commit_history"] = get_commit_history.get_commits_history_all_units(old_version_id,
+                                                                                              current_version_id,
+                                                                                              unit_list,
+                                                                                              repo_path)
 
     return atdi_var
