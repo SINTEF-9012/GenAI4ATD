@@ -14,7 +14,7 @@ def generate_examples(smell_tracker: list, number_of_examples=10):
     examples: list = []
 
     for s in smell_tracker:
-        if s["type_components_affected"] == "UNIT" and len(s["characteristics_by_version"]) > 1 and (
+        if len(s["characteristics_by_version"]) > 1 and (
                 s["characteristics_by_version"][1]["ATDI_var"]["variation"] == "UP" or
                 s["characteristics_by_version"][1]["ATDI_var"]["variation"] == "DOWN" or
                 s["characteristics_by_version"][1]["ATDI_var"]["variation"] == "NEW"):

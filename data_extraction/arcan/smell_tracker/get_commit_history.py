@@ -1,46 +1,53 @@
 import git
 import os
-import common.file_management as file_management
+
+# We keep the commit history of the units we already know, in case they appear multiple time in the data
+# The key is (unit, first_commit_id, last_commit_id)
+commits_histories_known: dict = {}
 
 
-def get_commits_history_all_component(first_commit_id: str, last_commit_id: str, components_affected: list,
-                                      repo_path: str, language: str):
+def get_commits_history_all_units(first_commit_id: str, last_commit_id: str, unit_list: list, repo_path: str):
     commits: list = []
 
-    for c in components_affected:
-        d: dict = {
-            "component": c,
-            "commit_history": get_commits_history_one_component(c, first_commit_id, last_commit_id, repo_path)
-        }
+    for unit in unit_list:
+        commit_history: list = get_commits_history_one_unit(unit, first_commit_id, last_commit_id, repo_path)
 
-        commits.append(d)
+        if commit_history:
+            commits.append({
+                "component": unit,
+                "commit_history": commit_history
+            })
 
     return commits
 
 
-def get_commits_history_one_component(component: str, first_commit_id: str, last_commit_id: str, repo_path: str):
+def get_commits_history_one_unit(unit: str, first_commit_id: str, last_commit_id: str, repo_path: str):
     commits_history: list = []
 
-    if component is not None:
-        component = component.replace("/", "\\")
+    if unit is not None:
+        unit = unit.replace("/", "\\")
 
-    repo = git.Repo(repo_path)
+    if (unit, first_commit_id, last_commit_id) not in commits_histories_known:
+        repo = git.Repo(repo_path)
 
-    current_commit = repo.commit(last_commit_id)
+        current_commit = repo.commit(last_commit_id)
 
-    while current_commit.hexsha != first_commit_id:
-        for file in current_commit.stats.files:
+        while current_commit.hexsha != first_commit_id:
+            for file in current_commit.stats.files:
 
-            if os.path.join(repo_path, file).replace("/", "\\") == component:
-                commits_history.append({
-                    "commit_id": current_commit.hexsha,
-                    "message": current_commit.message,
-                })
+                if os.path.join(repo_path, file).replace("/", "\\") == unit:
+                    commits_history.append({
+                        "commit_id": current_commit.hexsha,
+                        "message": current_commit.message,
+                    })
 
-        if current_commit.parents:
-            current_commit = current_commit.parents[0]
-        else:
-            break
+            if current_commit.parents:
+                current_commit = current_commit.parents[0]
+            else:
+                break
+
+        commits_histories_known[(unit, first_commit_id, last_commit_id)] = commits_history
+    else:
+        commits_history = commits_histories_known[(unit, first_commit_id, last_commit_id)]
 
     return commits_history
-

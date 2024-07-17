@@ -1,15 +1,19 @@
 import git
 import common.file_management as file_management
 
+# We keep the diffs of the units we already know, in case they appear multiple time in the data
+# The key is (unit, first_commit_id, last_commit_id)
+diffs_known: dict = {}
 
-def get_diff_all_components(current_version_id: str, old_version_id: str, components_affected: list, repo_path: str,
-                            language: str):
+
+def get_diff_all_units(last_commit_id: str, first_commit_id: str, unit_list: list, repo_path: str,
+                       language: str):
     diffs: list = []
 
-    for c in components_affected:
+    for unit in unit_list:
         d: dict = {
-            "component": c,
-            "diff": get_diff_one_component(current_version_id, old_version_id, c, repo_path)
+            "component": unit,
+            "diff": get_diff_one_unit(last_commit_id, first_commit_id, unit, repo_path)
         }
 
         diffs.append(d)
@@ -17,10 +21,13 @@ def get_diff_all_components(current_version_id: str, old_version_id: str, compon
     return diffs
 
 
-def get_diff_one_component(current_version_id: str, old_version_id: str, component: str, repo_path: str):
-    repo = git.Repo(repo_path)
+def get_diff_one_unit(last_commit_id: str, first_commit_id: str, unit: str, repo_path: str):
+    if (unit, first_commit_id, last_commit_id) not in diffs_known:
+        repo = git.Repo(repo_path)
 
-    # command = "cd "+repo_path+" && git diff "+old_version_id+" "+current_version_id+" "+file_full_path
-    # return subprocess.run(command, capture_output=True, shell=True)
+        # command = "cd "+repo_path+" && git diff "+old_version_id+" "+current_version_id+" "+file_full_path
+        # return subprocess.run(command, capture_output=True, shell=True)
 
-    return repo.git.diff(current_version_id, old_version_id, component)
+        return repo.git.diff(last_commit_id, first_commit_id, unit)
+    else:
+        return diffs_known[(unit, first_commit_id, last_commit_id)]

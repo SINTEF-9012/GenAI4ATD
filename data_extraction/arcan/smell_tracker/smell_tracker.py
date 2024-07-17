@@ -145,9 +145,9 @@ def check_atd_variation(current_atdi: float, old_atdi: float, current_version_id
         # atdi_var["diffs"] = get_diff.get_diff_all_components(current_version_id, old_version_id,
         #                                                     components_affected,
         #                                                     repo_path, language)
-        atdi_var["commit_history"] = get_commit_history.get_commits_history_all_component(old_version_id,
-                                                                                          current_version_id,
-                                                                                          unit_list,
-                                                                                          repo_path, language)
+        atdi_var["commit_history"] = get_commit_history.get_commits_history_all_units(old_version_id,
+                                                                                      current_version_id,
+                                                                                      unit_list,
+                                                                                      repo_path)
 
     return atdi_var
