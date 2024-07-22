@@ -168,4 +168,3 @@ cython_debug/
 arcanOutput/
 genai4atdOutput/
 tests/
-param.txt
