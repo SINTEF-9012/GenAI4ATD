@@ -1,13 +1,21 @@
 import platform
 import os
 
+# These functions are inconstants in how they manage paths, these should be rewritten to use the os module everywhere
+
 if platform.system() == "Windows":
     separator: str = "\\"
 else:
     separator: str = "/"
 
 
-def get_paths_main_packages(repo_path: str, language: str):
+def get_paths_main_packages(repo_path: str, language: str) -> list:
+    """
+    Return a list of the main and test packages folders inside a repository
+    :param repo_path:
+    :param language: JAVA or CSHARP
+    :return: A list of the main and test packages
+    """
     paths_main_packages: list = []
 
     if language == "JAVA":
@@ -22,7 +30,14 @@ def get_paths_main_packages(repo_path: str, language: str):
     return paths_main_packages
 
 
-def convert_component_to_path(component: str, language: str, is_unit: bool):
+def convert_component_to_path(component: str, language: str, is_unit: bool) -> str:
+    """
+    Convert a component ie "org.myproject.mypackage.MyClass" to a proper path
+    :param component:
+    :param language: JAVA or CSHARP
+    :param is_unit: Whether the component is unit or a container
+    :return: The path to the component
+    """
     unit_path: str = component.replace(".", separator)
 
     if is_unit:
@@ -34,7 +49,15 @@ def convert_component_to_path(component: str, language: str, is_unit: bool):
     return unit_path
 
 
-def get_full_path(component: str, repo_path: str, language: str, is_unit: bool):
+def get_full_path(component: str, repo_path: str, language: str, is_unit: bool) -> str:
+    """
+    Get the full path of a component
+    :param component:
+    :param repo_path:
+    :param language: JAVA or CSHARP
+    :param is_unit: Whether the component is unit or a container
+    :return: The full path to the component
+    """
     component = convert_component_to_path(component, language, is_unit)
     path_main_packages: list = get_paths_main_packages(repo_path, language)
     for main_package in path_main_packages:
@@ -42,7 +65,14 @@ def get_full_path(component: str, repo_path: str, language: str, is_unit: bool):
             return main_package + component
 
 
-def get_unit_list_from_container_list(containers: str, repo_path: str, language: str):
+def get_unit_list_from_container_list(containers: str, repo_path: str, language: str) -> list:
+    """
+    Retrieve all the unit contained in the containers from the list
+    :param containers:
+    :param repo_path:
+    :param language: JAVA or CSHARP
+    :return: The list of all the units
+    """
     container_list = get_components_as_list(containers)
     unit_list: list = []
 
@@ -55,13 +85,27 @@ def get_unit_list_from_container_list(containers: str, repo_path: str, language:
     return unit_list
 
 
-def get_components_as_list(components: str):
+def get_components_as_list(components: str) -> list:
+    """
+    Convert a string of components ie "[org.myproject.mypackage.MyClass, org.myproject.mypackage.MyOtherClass]" to a
+    proper list
+    :param components:
+    :return: The list of components
+    """
     components = components.replace(" ", "")
     components = components[1:-1]
     return components.split(",")
 
 
-def get_components_as_paths_list(components: str, repo_path: str, language: str, is_unit: bool):
+def get_components_as_paths_list(components: str, repo_path: str, language: str, is_unit: bool) -> list:
+    """
+    Return a list of the paths to the components given in parameter
+    :param components:
+    :param repo_path:
+    :param language: JAVA or CSHARP
+    :param is_unit: Whether the components are units or containers
+    :return:
+    """
     components_list = get_components_as_list(components)
     paths_list: list = []
 

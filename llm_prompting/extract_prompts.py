@@ -2,8 +2,14 @@ import json
 from funcy import omit
 
 
-def extract_prompts_nl(path_prompts: str):
-    prompts_file = open(path_prompts)
+def extract_prompts_nl(path_prompts_file: str) -> list:
+    """
+    Extract prompts from a natural language (Markdown) prompts file. Necessitate that the file was created with the
+    as_multiple_prompts parameter.
+    :param path_prompts_file:
+    :return:
+    """
+    prompts_file = open(path_prompts_file)
 
     prompts_str = prompts_file.read()
 
@@ -11,14 +17,21 @@ def extract_prompts_nl(path_prompts: str):
                              "====  \n")
 
 
-def extract_prompts_json(path_prompts: str, definitions: bool = False):
-    prompts_file = open(path_prompts)
+def extract_prompts_json(path_prompts_file: str, definitions: bool = False) -> list:
+    """
+    Extract prompts from a JSON prompts file
+    :param path_prompts_file:
+    :param definitions:
+    :return:
+    """
+    prompts_file = open(path_prompts_file)
 
     prompts_json: dict = json.loads(prompts_file.read())
 
     prompts_list: list = []
 
-    # add a little bit of context so the llm know what to do
+    # add the context
+    # contrary to the NL version, the context in not written in the prompt file
     prompts_list.append("We are working on the architectural technical debt of a project  \n" +
                         "We already analyzed the project and detected architectural smells using other tools.  \n" +
                         "We will give you a list of the smells we detected and their characteristics, in JSON format." +
@@ -72,8 +85,13 @@ def extract_prompts_json(path_prompts: str, definitions: bool = False):
     return prompts_list
 
 
-def extract_prompts_evo(path_prompts: str):
-    prompts_file = open(path_prompts)
+def extract_prompts_evo(path_prompts_file: str) -> list:
+    """
+    Extract prompts from a smell track file
+    :param path_prompts_file:
+    :return:
+    """
+    prompts_file = open(path_prompts_file)
 
     prompts_json: list = json.loads(prompts_file.read())
 

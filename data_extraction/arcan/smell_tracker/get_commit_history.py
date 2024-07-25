@@ -7,6 +7,14 @@ commits_histories_known: dict = {}
 
 
 def get_commits_history_all_units(first_commit_id: str, last_commit_id: str, unit_list: list, repo_path: str):
+    """
+    Get the commit histories between two commits for all units in a list.
+    :param last_commit_id:
+    :param first_commit_id:
+    :param unit_list:
+    :param repo_path:
+    :return: The commit histories list
+    """
     commits: list = []
 
     for unit in unit_list:
@@ -22,6 +30,14 @@ def get_commits_history_all_units(first_commit_id: str, last_commit_id: str, uni
 
 
 def get_commits_history_one_unit(unit: str, first_commit_id: str, last_commit_id: str, repo_path: str):
+    """
+    Get the commit history between two commits for one unit.
+    :param last_commit_id:
+    :param first_commit_id:
+    :param unit:
+    :param repo_path:
+    :return: The commit history
+    """
     commits_history: list = []
 
     if unit is not None:

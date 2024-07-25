@@ -2,15 +2,23 @@ import requests
 import json
 
 
-def chat(api_url: str, model: str, prompts: list, output: str):
+def chat(api_url: str, model: str, prompts_list: list, output: str) -> str:
+    """
+    Chat with a LLM model through the Ollama API using a prompts list.
+    :param api_url:
+    :param model:
+    :param prompts_list:
+    :param output:
+    :return: The output file name
+    """
     messages: list = []
 
-    for p in prompts:
+    for p in prompts_list:
         messages.append(format_prompt(str(p)))
         response = send_prompt(api_url, model, messages)
         messages.append(response)
 
-    file_name = output + ".json"
+    file_name: str = output + ".json"
 
     file = open(file_name, "w")
     file.write(json.dumps(messages))
@@ -18,7 +26,12 @@ def chat(api_url: str, model: str, prompts: list, output: str):
     return file_name
 
 
-def format_prompt(prompt: str):
+def format_prompt(prompt: str) -> dict:
+    """
+    Format a prompt according to the Ollama API specification at https://github.com/ollama/ollama/blob/main/docs/api.md
+    :param prompt:
+    :return:
+    """
     return {
         "role": "user",
         "content": prompt
@@ -26,6 +39,13 @@ def format_prompt(prompt: str):
 
 
 def send_prompt(api_url: str, model: str, messages: list):
+    """
+    Send a prompt to the Ollama API
+    :param api_url:
+    :param model:
+    :param messages: Messages history of the chat
+    :return:
+    """
     prompt_json = {"model": model, "messages": messages, "stream": False}
     response = requests.post(api_url, json=prompt_json).json()
 

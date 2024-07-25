@@ -2,10 +2,20 @@ from abc import ABC, abstractmethod
 import pandas as pd
 import json
 from common.utils import format_column_name
+from pathlib import Path
 
 
 def define_file_name(prompt_output: str, write_dependencies_bool: bool = False, write_loc: bool = False,
-                     as_multiple_prompts: bool = False, write_def: bool = False):
+                     as_multiple_prompts: bool = False, write_def: bool = False) -> str:
+    """
+    Define the output file name from the parameters chosen
+    :param prompt_output:
+    :param write_dependencies_bool:
+    :param write_loc:
+    :param as_multiple_prompts:
+    :param write_def:
+    :return:
+    """
     file_name_builder: list[str] = [prompt_output]
 
     if write_def:
@@ -30,6 +40,10 @@ def define_file_name(prompt_output: str, write_dependencies_bool: bool = False, 
 
 
 class PromptBuilder(ABC):
+    """
+    Base class for all prompt builders
+    """
+
     smell_characteristics: list = ["ATDI", "Severity", "Size", "LOCDensity", "NumberOfEdge"]
     components_metrics: list = ["AbstractnessMetric_componentsFrom", "ChangeHasOccurred_componentsFrom",
                                 "LinesOfCode_componentsFrom", "FanIn_componentsFrom", "FanOut_componentsFrom",
@@ -37,6 +51,7 @@ class PromptBuilder(ABC):
                                 "PageRank_componentsFrom"]
     dependencies_infos: list = []
 
+    # Definitions are taken from the Arcan documentation https://docs.arcan.tech/2.9.0/
     smells_def: dict = {
         "cyclicDep": {
             "definition": "When two or more architectural components are involved in a chain of relationships.The architectural components involved in a Cyclic Dependency are hard to release, hard to maintain, hard to reuse in isolation. The smell violates the Acyclic Dependencies Principle defined by R. C. Martin.",
@@ -81,36 +96,55 @@ class PromptBuilder(ABC):
     def build_prompt(self, arcan_output_path: str, language: str, prompt_output: str,
                      write_dependencies_bool: bool = False, write_loc: bool = False, as_multiple_prompts: bool = False,
                      write_def: bool = False):
+        """
+        Build the prompt and write it to the output file
+        :param arcan_output_path:
+        :param language: JAVA or CSHARP
+        :param prompt_output:
+        :param write_dependencies_bool: Whether to add the dependencies of each component in the prompt
+        :param write_loc: Whether to write the lines of code using dependencies in the prompt
+        :param as_multiple_prompts: Whether to add separation characters so the output file can be parsed into multiple
+        prompts at a later time. Actually only useful for the Markdown prompt builder
+        :param write_def: Whether to write the definition for smells and metrics in the prompt
+        """
         pass
 
     @abstractmethod
-    def write_smell_characteristics(self):
+    def __write_smell_characteristics(self, row):
         pass
 
     @abstractmethod
-    def write_component_metrics(self):
+    def __write_component_metrics(self, row):
         pass
 
     @abstractmethod
-    def write_dependencies(self):
+    def __write_dependencies(self, row, write_locs: bool):
         pass
 
 
 class PromptBuilderNL(PromptBuilder):
+    string_builder: list = []
+    project_name: str = ""
+    smell_id: int = 0
+    component_id: int = 0
+    language: str = ""
+
     def build_prompt(self, arcan_output_path: str, language: str, prompt_output: str,
                      write_dependencies_bool: bool = False, write_loc: bool = False, as_multiple_prompts: bool = False,
                      write_def: bool = False):
         arcan_output = pd.read_csv(arcan_output_path)
 
-        string_builder: list = []
+        self.string_builder = []
 
-        project_name: str = arcan_output.iloc[0]["project"]
-        smell_id: int = 0
-        component_id: int = 0
+        self.project_name = arcan_output.iloc[0]["project"]
+        self.smell_id = 0
+        self.component_id = 0
 
-        # introduction paragraph
-        string_builder.append(
-            "We are working on the architectural technical debt of the " + language + " project called " + project_name + "  \n" +
+        self.language = language
+
+        # add the context
+        self.string_builder.append(
+            "We are working on the architectural technical debt of the " + self.language + " project called " + self.project_name + "  \n" +
             "We already analyzed the project and detected architectural smells using other tools. " +
             "We will give you a list of the smells we detected and their characteristics. " +
             "There is four type of architectural smells, cyclic dependency, hub-like dependency, unstable dependency and god component," +
@@ -121,93 +155,90 @@ class PromptBuilderNL(PromptBuilder):
         )
 
         if write_dependencies_bool:
-            string_builder.append("For each component affected, we will give you a list of its dependencies  \n")
+            self.string_builder.append("For each component affected, we will give you a list of its dependencies  \n")
 
         if write_def:
-            string_builder.append(
+            self.string_builder.append(
                 "Additionaly we will also provides definitions for specifics metrics and smells characteristics" +
                 "These definitions are provided by the documentation of the tool that we used to do the analyses of the architectural technical debt, " +
                 "please use these in your explanations and remediations.  \n" +
                 "Don't try to explain anything for now, just keep that in mind for when we will give you the smells to analyze.  \n")
 
             if as_multiple_prompts:
-                string_builder.append("  \n" +
-                                      "====  \n")
+                self.string_builder.append("  \n" +
+                                           "====  \n")
 
             definitions: list = [self.smells_def, self.smell_characteristics_def, self.components_metrics_def]
 
             for d in definitions:
                 for k in d.keys():
-                    string_builder.append(str(k) + " : " + str(d[k]) + "  \n")
+                    self.string_builder.append(str(k) + " : " + str(d[k]) + "  \n")
 
         if not as_multiple_prompts:
-            string_builder.append("  \n  \n" +
-                                  "Here is a list of the smells we detected :  \n")
+            self.string_builder.append("  \n  \n" +
+                                       "Here is a list of the smells we detected :  \n")
 
         # for each smell
         for index, row in arcan_output.iterrows():
-            if row["vertexId"] != smell_id:
+            if row["vertexId"] != self.smell_id:
                 if as_multiple_prompts:
-                    string_builder.append("  \n" +
-                                          "====  \n")
+                    self.string_builder.append("  \n" +
+                                               "====  \n")
 
-                smell_id = row["vertexId"]
+                self.smell_id = row["vertexId"]
 
                 # smell characteristics
-                string_builder = self.write_smell_characteristics(string_builder, smell_id, row)
+                self.__write_smell_characteristics(row)
 
-                string_builder.append(".  \n" +
-                                      "Here is a list of the components it affects :  \n")
+                self.string_builder.append(".  \n" +
+                                           "Here is a list of the components it affects :  \n")
 
-            if row["vertexId_componentsFrom"] != component_id:
-                component_id = row["vertexId_componentsFrom"]
+            if row["vertexId_componentsFrom"] != self.component_id:
+                self.component_id = row["vertexId_componentsFrom"]
 
                 # component metrics
-                string_builder = self.write_component_metrics(string_builder, component_id, row)
+                self.__write_component_metrics(row)
 
-                string_builder.append(".  \n")
+                self.string_builder.append(".  \n")
 
                 if write_dependencies_bool:
-                    string_builder.append("Here is a list of its dependencies :  \n")
+                    self.string_builder.append("Here is a list of its dependencies :  \n")
 
             if write_dependencies_bool:
                 # dependencies
-                string_builder = self.write_dependencies(language, write_loc, string_builder, row)
+                self.__write_dependencies(row, write_loc)
 
         prompt_output = define_file_name(prompt_output, write_dependencies_bool, write_loc, as_multiple_prompts,
                                          write_def)
 
-        file = open(prompt_output + ".md", "w")
-        file.write("".join(string_builder))
+        file = Path(prompt_output + ".md")
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_text("".join(self.string_builder))
 
-    def write_smell_characteristics(self, string_builder: list, smell_id: int, row):
-        string_builder.append("* Smell " + str(smell_id) + ".  \n"
-                                                           "This smell is a " + format_column_name(
+    def __write_smell_characteristics(self, row):
+        self.string_builder.append("* Smell " + str(self.smell_id) + ".  \n"
+                                                                     "This smell is a " + format_column_name(
             row["smellType"]) + ", ")
 
         for column in row.keys():
             if column in self.smell_characteristics:
-                string_builder.append("its " + format_column_name(column) + " is " + str(row[column]) + ", ")
+                self.string_builder.append("its " + format_column_name(column) + " is " + str(row[column]) + ", ")
 
-        return string_builder
-
-    def write_component_metrics(self, string_builder: list, component_id: int, row):
-        string_builder.append(
-            "     * Component " + str(component_id) + " named " + row["name_componentsFrom"] + " it is a " + row[
+    def __write_component_metrics(self, row):
+        self.string_builder.append(
+            "     * Component " + str(self.component_id) + " named " + row["name_componentsFrom"] + " it is a " + row[
                 "AffectedConstructType"] + ".  \n")
 
         for column in row.keys():
             if column in self.components_metrics:
-                string_builder.append("its " + format_column_name(column) + " is " + str(row[column]) + ", ")
+                self.string_builder.append("its " + format_column_name(column) + " is " + str(row[column]) + ", ")
 
-        return string_builder
-
-    def write_dependencies(self, language: str, write_LOC: bool, string_builder: list, row):
-        string_builder.append("         * Dependency " + str(row["vertexId_componentsTo"]) + " named " + row[
+    def __write_dependencies(self, row, write_locs: bool):
+        self.string_builder.append("         * Dependency " + str(row["vertexId_componentsTo"]) + " named " + row[
             "name_componentsTo"] + ".  \n")
 
-        if (write_LOC) and not pd.isna(row["Full_LOCS"]):
-            string_builder.append(
+        if write_locs and not pd.isna(row["Full_LOCS"]):
+            self.string_builder.append(
                 "Here is the type of usage of the dependency, and the lines of codes where it is used :  \n")
 
             dependencies_list: list = row["Full_LOCS"].split("~")
@@ -215,12 +246,10 @@ class PromptBuilderNL(PromptBuilder):
             for d in dependencies_list:
                 dependency: list = d.split("#")
 
-                string_builder.append("             * " + dependency[0] + " :  \n" +
-                                      "```" + language + "\n" +
-                                      dependency[1] + "\n" +
-                                      "```\n")
-
-        return string_builder
+                self.string_builder.append("             * " + dependency[0] + " :  \n" +
+                                           "```" + self.language + "\n" +
+                                           dependency[1] + "\n" +
+                                           "```\n")
 
 
 class PromptBuilderJSON(PromptBuilder):
@@ -239,9 +268,9 @@ class PromptBuilderJSON(PromptBuilder):
         component_id: int = 0
         component: dict = {}
 
-        # for each smell
         smells_list: list = []
 
+        # for each smell
         for index, row in arcan_output.iterrows():
             if row["vertexId"] != smell_id:
 
@@ -255,7 +284,7 @@ class PromptBuilderJSON(PromptBuilder):
                 smell = {
                     "id": row["vertexId"],
                     "type": row["smellType"],
-                    "characteristics": self.write_smell_characteristics(row),
+                    "characteristics": self.__write_smell_characteristics(row),
                     "components_affected": []
                 }
 
@@ -272,14 +301,14 @@ class PromptBuilderJSON(PromptBuilder):
                     "id": row["vertexId_componentsFrom"],
                     "name": row["name_componentsFrom"],
                     "type": row["AffectedConstructType"],
-                    "metrics": self.write_component_metrics(row)
+                    "metrics": self.__write_component_metrics(row)
                 }
 
                 if write_dependencies_bool:
                     component["dependencies"] = []
 
             if write_dependencies_bool:
-                component["dependencies"].append(self.write_dependencies(write_loc, row))
+                component["dependencies"].append(self.__write_dependencies(row, write_loc))
 
         json_builder["smells"] = smells_list
 
@@ -291,10 +320,11 @@ class PromptBuilderJSON(PromptBuilder):
         prompt_output = define_file_name(prompt_output, write_dependencies_bool, write_loc, as_multiple_prompts,
                                          write_def)
 
-        file = open(prompt_output + ".json", "w")
-        file.write(json.dumps(json_builder))
+        file = Path(prompt_output + ".json")
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_text(json.dumps(json_builder))
 
-    def write_smell_characteristics(self, row):
+    def __write_smell_characteristics(self, row) -> dict:
         smell_characteristics: dict = {}
 
         for column in row.keys():
@@ -303,7 +333,7 @@ class PromptBuilderJSON(PromptBuilder):
 
         return smell_characteristics
 
-    def write_component_metrics(self, row):
+    def __write_component_metrics(self, row) -> dict:
         component_metrics: dict = {}
 
         for column in row.keys():
@@ -312,22 +342,22 @@ class PromptBuilderJSON(PromptBuilder):
 
         return component_metrics
 
-    def write_dependencies(self, write_loc, row):
+    def __write_dependencies(self, row, write_locs: bool) -> dict:
         dependency: dict = {
             "id": row["vertexId_componentsTo"],
             "name": row["name_componentsTo"],
         }
 
-        if (write_loc) and not pd.isna(row["Full_LOCS"]):
+        if write_locs and not pd.isna(row["Full_LOCS"]):
             dependencies_list: list = row["Full_LOCS"].split("~")
 
             dependency["calls"] = []
             for d in dependencies_list:
-                d_splitted: list = d.split("#")
+                d_split: list = d.split("#")
                 dependency["calls"].append(
                     {
-                        "type": d_splitted[0],
-                        "LOCs": d_splitted[1]
+                        "type": d_split[0],
+                        "LOCs": d_split[1]
                     }
                 )
 

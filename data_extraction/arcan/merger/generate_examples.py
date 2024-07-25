@@ -2,10 +2,15 @@ import pandas as pd
 
 
 def generate(output_path: str):
+    """
+    Write the examples file at in the output directory
+    :param output_path:
+    """
     output = pd.read_csv(output_path)
 
     examples_list = []
 
+    # We want one smell of each kind
     examples_done = {"UNIT": ["cyclicDep", "hubLikeDep", "unstableDep", "godComponent"],
                      "CONTAINER": ["cyclicDep", "hubLikeDep", "unstableDep", "godComponent"]}
     for index, row in output.iterrows():

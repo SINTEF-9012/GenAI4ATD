@@ -10,6 +10,20 @@ import data_extraction.arcan.smell_tracker.get_diff as get_diff
 
 def main(input_path: str, output_path: str, repo_path: str, language: str, atdi_var_diff: bool = False,
          atdi_var_commit_history: bool = False, only_last_ver=False, number_of_ver=1000, example=False):
+    """
+    Write the smells tracked across versions into a JSON file. Optionally write an examples file.
+    :param input_path: Path to the Arcan output directory.
+    :param output_path:
+    :param repo_path:
+    :param language: JAVA or CSHARP
+    :param atdi_var_diff: Whether to write the diff for units involved in a smell when its ATDI increased, decreased, or
+    if the smell disappeared between two versions
+    :param atdi_var_commit_history: Whether to write the commit history for units involved in a smell when its ATDI
+    increased, decreased, or if the smell disappeared between two versions
+    :param only_last_ver: Whether to keep only the smells present in the latest version in the output file
+    :param number_of_ver: The number of versions to track smells across
+    :param example: Whether to write the examples file.
+    """
     smell_characteristics_keep: list = ["vertexId", "ATDI", "Severity", "Size", "LOCDensity", "NumberOfEdge"]
 
     smell_characteristics = pd.read_csv(input_path + "smell-characteristics.csv", sep=',')
@@ -33,7 +47,22 @@ def main(input_path: str, output_path: str, repo_path: str, language: str, atdi_
 
 
 def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: str, language: str, number_of_ver: int,
-                 atdi_var_diff: bool, atdi_var_commit_history: bool):
+                 atdi_var_diff: bool, atdi_var_commit_history: bool) -> dict:
+    """
+    Track smells across versions
+    :param smell_characteristics: Pandas dataframe containing smell characteristics retrieved from the Arcan output
+    :param smell_characteristics_keep: The smells characteristics we want to keep in the output
+    :param repo_path:
+    :param language: JAVA or CSHARP
+    :param number_of_ver: The number of versions to track smells across
+    :param atdi_var_diff: Whether to write the diff for units involved in a smell when its ATDI increased, decreased, or
+     if the smell disappeared between two versions
+    :param atdi_var_commit_history: Whether to write the commit history for units involved in a smell when its ATDI
+    increased, decreased, or if the smell disappeared between two versions
+    :return: A dictionary containing the smells tracked across versions, key being each versions we analysed, and
+    value the list of smells appearing in that version. The smell are stored under the last version in which they
+    appeared, or the version in which they disappeared if that is the case.
+    """
     versions_analysed = 0
 
     previous_version_id: str = ""
@@ -42,7 +71,7 @@ def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: s
 
     smell_is_known: bool = False
 
-    smells_by_version: dict = {first_version_id: {}}  # a smell will always be moved into the smell version it appeared
+    smells_by_version: dict = {first_version_id: {}}  # a smell will always be moved into the version it last appeared
     # or the version in which it disappeared
 
     for index, row in smell_characteristics.iterrows():
@@ -115,7 +144,14 @@ def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: s
     return smells_by_version
 
 
-def keep_only_last_ver(smell_characteristics, smell_tracker: list):
+# Probably not that useful as we track the smells that disappeared
+def keep_only_last_ver(smell_characteristics, smell_tracker: list) -> list:
+    """
+    Remove all the smells that are not present in the last version analysed
+    :param smell_characteristics: Pandas dataframe containing smell characteristics retrieved from the Arcan output
+    :param smell_tracker: The list containing the smells tracked across versions
+    :return:
+    """
     last_ver = smell_characteristics.tail(1)["versionId"].iat[0]
     smell_tracker_last_ver = []
 
@@ -127,7 +163,7 @@ def keep_only_last_ver(smell_characteristics, smell_tracker: list):
     return smell_tracker_last_ver
 
 
-def write_characteristics(row, smell_characteristics_keep):
+def write_characteristics(row, smell_characteristics_keep) -> dict:
     smell_characteristics: dict = {}
 
     for column in row.keys():
@@ -139,7 +175,24 @@ def write_characteristics(row, smell_characteristics_keep):
 
 def check_atd_variation(current_atdi: float, old_atdi: float, current_version_id: str, old_version_id: str,
                         components_affected: str, repo_path: str, language: str, component_type: str, diff: bool,
-                        commit_history: bool):
+                        commit_history: bool) -> dict:
+    """
+    Check the ATDI variation between two versions. If there is a variation and the diff and/or commit_history is True,
+    write the diff and/or commit history between the two versions of each unit involved in the smell.
+    :param current_atdi:
+    :param old_atdi:
+    :param current_version_id:
+    :param old_version_id:
+    :param components_affected:
+    :param repo_path:
+    :param language: JAVA or CSHARP
+    :param component_type: CONTAINER or UNIT
+    :param diff: Whether to write the diff for units involved in a smell when its ATDI increased, decreased, or
+     if the smell disappeared between two versions
+    :param commit_history: Whether to write the commit history for units involved in a smell when its ATDI
+    increased, decreased, or if the smell disappeared between two versions
+    :return: A dictionary containing the variation and the diffs and/or commit histories if applicable
+    """
     atdi_var: dict = {}
 
     if math.isclose(current_atdi, old_atdi):
@@ -166,7 +219,7 @@ def check_atd_variation(current_atdi: float, old_atdi: float, current_version_id
 
             if diff:
                 atdi_var["diffs"] = get_diff.get_diff_all_units(current_version_id, old_version_id, unit_list,
-                                                                repo_path, language)
+                                                                repo_path)
 
             if commit_history:
                 atdi_var["commit_history"] = get_commit_history.get_commits_history_all_units(old_version_id,
@@ -178,7 +231,23 @@ def check_atd_variation(current_atdi: float, old_atdi: float, current_version_id
 
 
 def check_for_smells_that_disappeared(smells_by_version: dict, last_version: str, repo_path: str, language: str,
-                                      atdi_var_diff: bool, atdi_var_commit_history: bool):
+                                      atdi_var_diff: bool, atdi_var_commit_history: bool) -> dict:
+    """
+    Check the smells that disappeared in a version, update their entry in smells_by_version
+    :param smells_by_version: A dictionary containing the smells tracked across versions, key being each versions we analysed, and
+    value the list of smells appearing in that version. The smell are stored under the last version in which they
+    appeared, or the version in which they disappeared if that is the case.
+    :param last_version: The version we compare to previous ones
+    :param repo_path:
+    :param language: JAVA or CSHARP
+    :param atdi_var_diff: Whether to write the diff for units involved in a smell when its ATDI increased, decreased, or
+     if the smell disappeared between two versions
+    :param atdi_var_commit_history: Whether to write the commit history for units involved in a smell when its ATDI
+    increased, decreased, or if the smell disappeared between two versions
+    :return: A dictionary containing the smells tracked across versions, key being each versions we analysed, and
+    value the list of smells appearing in that version. The smell are stored under the last version in which they
+    appeared, or the version in which they disappeared if that is the case.
+    """
     for version in smells_by_version:
         for smell_data in smells_by_version[version].values():
             if (smell_data not in smells_by_version[last_version].values()
@@ -200,7 +269,14 @@ def check_for_smells_that_disappeared(smells_by_version: dict, last_version: str
     return smells_by_version
 
 
-def write_smells_list(smells_by_version: dict):
+def write_smells_list(smells_by_version: dict) -> list:
+    """
+    Write a smell list from the smells_by_version dictionary
+    :param smells_by_version: A dictionary containing the smells tracked across versions, key being each versions we analysed, and
+    value the list of smells appearing in that version. The smell are stored under the last version in which they
+    appeared, or the version in which they disappeared if that is the case.
+    :return: The smell list
+    """
     smells_list: list = []
 
     for version in smells_by_version:
