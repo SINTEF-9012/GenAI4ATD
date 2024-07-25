@@ -166,5 +166,6 @@ cython_debug/
 
 # Project specific
 arcanOutput/
+designiteOutput/
 genai4atdOutput/
 tests/

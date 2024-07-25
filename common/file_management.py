@@ -37,7 +37,6 @@ def convert_component_to_path(component: str, language: str, is_unit: bool):
 def get_full_path(component: str, repo_path: str, language: str, is_unit: bool):
     component = convert_component_to_path(component, language, is_unit)
     path_main_packages: list = get_paths_main_packages(repo_path, language)
-
     for main_package in path_main_packages:
         if os.path.isfile(main_package + component) or os.path.isdir(main_package + component):
             return main_package + component
@@ -49,8 +48,9 @@ def get_unit_list_from_container_list(containers: str, repo_path: str, language:
 
     for container in container_list:
         container_path: str = get_full_path(container, repo_path, language, False)
-        for file in os.listdir(container_path):
-            unit_list.append(os.path.join(container_path, file))
+        if container_path is not None:
+            for file in os.listdir(container_path):
+                unit_list.append(os.path.join(container_path, file))
 
     return unit_list
 
