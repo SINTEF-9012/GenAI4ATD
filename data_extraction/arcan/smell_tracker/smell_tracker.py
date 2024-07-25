@@ -181,7 +181,8 @@ def check_for_smells_that_disappeared(smells_by_version: dict, last_version: str
                                       atdi_var_diff: bool, atdi_var_commit_history: bool):
     for version in smells_by_version:
         for smell_data in smells_by_version[version].values():
-            if smell_data not in smells_by_version[last_version].values():
+            if (smell_data not in smells_by_version[last_version].values()
+                    and smell_data["ATDI_var"]["variation"] != "DISAPPEARED"):
                 smell_data["characteristics_by_version"].append(
                     {
                         "versionId": last_version,
