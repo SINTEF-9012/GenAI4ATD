@@ -1,7 +1,7 @@
 import pandas as pd
 import os
-import get_locs as gl
-import generate_examples as examples
+import data_extraction.arcan.merger.get_locs as gl
+import data_extraction.arcan.merger.generate_examples as examples
 import common.file_management as file_management
 
 

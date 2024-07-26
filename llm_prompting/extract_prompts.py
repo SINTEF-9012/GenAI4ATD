@@ -32,6 +32,7 @@ def extract_prompts_json(path_prompts_file: str, definitions: bool = False) -> l
 
     # add the context
     # contrary to the NL version, the context in not written in the prompt file
+    # could be changed ?
     prompts_list.append("We are working on the architectural technical debt of a project  \n" +
                         "We already analyzed the project and detected architectural smells using other tools.  \n" +
                         "We will give you a list of the smells we detected and their characteristics, in JSON format." +

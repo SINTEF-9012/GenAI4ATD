@@ -1,7 +1,7 @@
 import argparse
 import data_extraction.arcan.smell_tracker.smell_tracker as smell_tracker
 
-parser = argparse.ArgumentParser(prog="arcan prompt builder", description="Build prompts based on Arcan Merger output")
+parser = argparse.ArgumentParser(prog="arcan prompt builder", description="Track smells across versions")
 parser.add_argument("input", help="input file (the arcan output)")
 parser.add_argument("output", help="output directory", default="genai4atdOutput/smell-track-output/")
 parser.add_argument("repo", help="path to the repository")

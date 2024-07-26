@@ -15,7 +15,7 @@ parser.add_argument("-def", "--definitions",
                     help="write the definitions of the metrics as defined by Arcan (incompatible with -evo)",
                     action="store_true")
 parser.add_argument("-evo", "--evolution",
-                    help="indicate that the prompts are from an evolution analysis (incompatible with --json and -evo)",
+                    help="indicate that the prompts are from an evolution analysis (incompatible with --json and -def)",
                     action="store_true")
 
 args = parser.parse_args()

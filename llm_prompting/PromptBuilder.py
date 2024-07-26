@@ -10,23 +10,23 @@ def define_file_name(prompt_output: str, write_dependencies_bool: bool = False, 
     """
     Define the output file name from the parameters chosen
     :param prompt_output:
-    :param write_dependencies_bool:
-    :param write_loc:
-    :param as_multiple_prompts:
-    :param write_def:
+    :param write_dependencies_bool: Whether to add the dependencies of each component in the prompt
+    :param write_loc: Whether to write the lines of code using dependencies in the prompt
+    :param as_multiple_prompts: Whether to add separation characters so the output file can be parsed into multiple
+    prompts at a later time. Actually only useful for the Markdown prompt builder
+    :param write_def: Whether to write the definition for smells and metrics in the prompt. Actually only useful
+    for the JSON prompt builder, as we abandoned using natural language at this point
     :return:
     """
     file_name_builder: list[str] = [prompt_output]
 
     if write_def:
-        file_name_builder.append("v2/")
+        file_name_builder.append("defs/")
     else:
-        file_name_builder.append("v1/")
+        file_name_builder.append("nodefs/")
 
     if as_multiple_prompts:
         file_name_builder.append('multiple-queries/')
-    else:
-        file_name_builder.append('single-query/')
 
     file_name_builder.append('prompt')
 
@@ -105,20 +105,21 @@ class PromptBuilder(ABC):
         :param write_loc: Whether to write the lines of code using dependencies in the prompt
         :param as_multiple_prompts: Whether to add separation characters so the output file can be parsed into multiple
         prompts at a later time. Actually only useful for the Markdown prompt builder
-        :param write_def: Whether to write the definition for smells and metrics in the prompt
+        :param write_def: Whether to write the definition for smells and metrics in the prompt. Actually only useful
+        for the JSON prompt builder, as we abandoned using natural language at this point
         """
         pass
 
     @abstractmethod
-    def __write_smell_characteristics(self, row):
+    def write_smell_characteristics(self, row):
         pass
 
     @abstractmethod
-    def __write_component_metrics(self, row):
+    def write_component_metrics(self, row):
         pass
 
     @abstractmethod
-    def __write_dependencies(self, row, write_locs: bool):
+    def write_dependencies(self, row, write_locs: bool):
         pass
 
 
@@ -188,7 +189,7 @@ class PromptBuilderNL(PromptBuilder):
                 self.smell_id = row["vertexId"]
 
                 # smell characteristics
-                self.__write_smell_characteristics(row)
+                self.write_smell_characteristics(row)
 
                 self.string_builder.append(".  \n" +
                                            "Here is a list of the components it affects :  \n")
@@ -197,7 +198,7 @@ class PromptBuilderNL(PromptBuilder):
                 self.component_id = row["vertexId_componentsFrom"]
 
                 # component metrics
-                self.__write_component_metrics(row)
+                self.write_component_metrics(row)
 
                 self.string_builder.append(".  \n")
 
@@ -206,7 +207,7 @@ class PromptBuilderNL(PromptBuilder):
 
             if write_dependencies_bool:
                 # dependencies
-                self.__write_dependencies(row, write_loc)
+                self.write_dependencies(row, write_loc)
 
         prompt_output = define_file_name(prompt_output, write_dependencies_bool, write_loc, as_multiple_prompts,
                                          write_def)
@@ -215,7 +216,7 @@ class PromptBuilderNL(PromptBuilder):
         file.parent.mkdir(parents=True, exist_ok=True)
         file.write_text("".join(self.string_builder))
 
-    def __write_smell_characteristics(self, row):
+    def write_smell_characteristics(self, row):
         self.string_builder.append("* Smell " + str(self.smell_id) + ".  \n"
                                                                      "This smell is a " + format_column_name(
             row["smellType"]) + ", ")
@@ -224,7 +225,7 @@ class PromptBuilderNL(PromptBuilder):
             if column in self.smell_characteristics:
                 self.string_builder.append("its " + format_column_name(column) + " is " + str(row[column]) + ", ")
 
-    def __write_component_metrics(self, row):
+    def write_component_metrics(self, row):
         self.string_builder.append(
             "     * Component " + str(self.component_id) + " named " + row["name_componentsFrom"] + " it is a " + row[
                 "AffectedConstructType"] + ".  \n")
@@ -233,7 +234,7 @@ class PromptBuilderNL(PromptBuilder):
             if column in self.components_metrics:
                 self.string_builder.append("its " + format_column_name(column) + " is " + str(row[column]) + ", ")
 
-    def __write_dependencies(self, row, write_locs: bool):
+    def write_dependencies(self, row, write_locs: bool):
         self.string_builder.append("         * Dependency " + str(row["vertexId_componentsTo"]) + " named " + row[
             "name_componentsTo"] + ".  \n")
 
@@ -284,7 +285,7 @@ class PromptBuilderJSON(PromptBuilder):
                 smell = {
                     "id": row["vertexId"],
                     "type": row["smellType"],
-                    "characteristics": self.__write_smell_characteristics(row),
+                    "characteristics": self.write_smell_characteristics(row),
                     "components_affected": []
                 }
 
@@ -301,14 +302,14 @@ class PromptBuilderJSON(PromptBuilder):
                     "id": row["vertexId_componentsFrom"],
                     "name": row["name_componentsFrom"],
                     "type": row["AffectedConstructType"],
-                    "metrics": self.__write_component_metrics(row)
+                    "metrics": self.write_component_metrics(row)
                 }
 
                 if write_dependencies_bool:
                     component["dependencies"] = []
 
             if write_dependencies_bool:
-                component["dependencies"].append(self.__write_dependencies(row, write_loc))
+                component["dependencies"].append(self.write_dependencies(row, write_loc))
 
         json_builder["smells"] = smells_list
 
@@ -324,7 +325,7 @@ class PromptBuilderJSON(PromptBuilder):
         file.parent.mkdir(parents=True, exist_ok=True)
         file.write_text(json.dumps(json_builder))
 
-    def __write_smell_characteristics(self, row) -> dict:
+    def write_smell_characteristics(self, row) -> dict:
         smell_characteristics: dict = {}
 
         for column in row.keys():
@@ -333,7 +334,7 @@ class PromptBuilderJSON(PromptBuilder):
 
         return smell_characteristics
 
-    def __write_component_metrics(self, row) -> dict:
+    def write_component_metrics(self, row) -> dict:
         component_metrics: dict = {}
 
         for column in row.keys():
@@ -342,7 +343,7 @@ class PromptBuilderJSON(PromptBuilder):
 
         return component_metrics
 
-    def __write_dependencies(self, row, write_locs: bool) -> dict:
+    def write_dependencies(self, row, write_locs: bool) -> dict:
         dependency: dict = {
             "id": row["vertexId_componentsTo"],
             "name": row["name_componentsTo"],

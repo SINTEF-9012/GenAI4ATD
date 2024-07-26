@@ -25,7 +25,7 @@ def generate_examples(smell_tracker: list, number_of_examples=10) -> list:
     examples: list = []
 
     for s in smell_tracker:
-        if detect_var(s): # The smells that are interesting for examples are the smells that varied or appeared
+        if detect_var(s):  # The smells that are interesting for examples are the smells that varied or appeared
             examples.append(s)
             number_of_examples -= 1
             if number_of_examples == 0:
@@ -34,7 +34,7 @@ def generate_examples(smell_tracker: list, number_of_examples=10) -> list:
     return examples
 
 
-def detect_var(smell) -> bool:
+def detect_var(smell: dict) -> bool:
     """
     Detect if a smell has varied or appeared between any of the versions we analysed
     :param smell:

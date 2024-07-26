@@ -9,9 +9,9 @@ parser.add_argument("-dep", "--dependencies", help="write the components depende
 parser.add_argument("-loc", "--linesofcodes", help="write the lines of codes that creates dependencies",
                     action="store_true")
 parser.add_argument("-def", "--definitions",
-                    help="write the definitions of the metrics as defined by Arcan (incompatible with -mul)",
+                    help="write the definitions of the metrics as defined by Arcan",
                     action="store_true")
-parser.add_argument("-mul", "--multiple", help="as multiple prompt (incompatible with -def)", action="store_true")
+parser.add_argument("-mul", "--multiple", help="as multiple prompt (only for a NL prompt)", action="store_true")
 parser.add_argument("--json", help="build the prompt in json format", action="store_true")
 
 args = parser.parse_args()
@@ -25,8 +25,8 @@ definitions: bool = args.definitions
 multiple: bool = args.multiple
 json: bool = args.json
 
-if definitions and multiple:
-    raise ValueError("-def and -mul are incompatible")
+if json and multiple:
+    raise ValueError("--json and -mul are incompatible")
 
 if json:
     prompt_builder = PromptBuilder.PromptBuilderJSON()
