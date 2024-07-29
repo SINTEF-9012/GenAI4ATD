@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import requests
 import json
 
@@ -20,8 +22,9 @@ def chat(api_url: str, model: str, prompts_list: list, output: str) -> str:
 
     file_name: str = output + ".json"
 
-    file = open(file_name, "w")
-    file.write(json.dumps(messages))
+    file = Path(file_name)
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text(json.dumps(messages))
 
     return file_name
 

@@ -1,5 +1,7 @@
 import math
 import os
+from pathlib import Path
+
 import pandas as pd
 import json
 import common.utils as utils
@@ -40,11 +42,13 @@ def main(input_path: str, output_path: str, repo_path: str, language: str, atdi_
     if example:
         example_smell: list = generate_examples.generate_examples(smell_list)
 
-        example_file = open(os.path.join(output_path, os.path.split(input_path)[-1]) + "_example.json", "w")
-        example_file.write(json.dumps(example_smell))
+        file = Path(os.path.join(output_path, os.path.split(input_path)[-1]) + "_example.json")
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_text(json.dumps(example_smell))
 
-    file = open(os.path.join(output_path, os.path.split(input_path)[-1]) + "_smell_track.json", "w")
-    file.write(json.dumps(smell_list))
+    file = Path(os.path.join(output_path, os.path.split(input_path)[-1]) + "_smell_track.json")
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text(json.dumps(smell_list))
 
 
 def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: str, language: str, number_of_ver: int,

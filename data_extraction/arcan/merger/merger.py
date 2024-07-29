@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pandas as pd
 import os
 import data_extraction.arcan.merger.get_locs as gl
@@ -87,9 +89,10 @@ def merger(input_path: str, output_path: str, language: str, repo_path: str, loc
                 final = final[:index]
                 break
 
-    output_file: str = os.path.join(output_path, os.path.split(input_path)[-1]) + "-merged.csv"
+    output_file = Path(os.path.join(output_path, os.path.split(input_path)[-1]) + "-merged.csv")
+    output_file.parent.mkdir(parents=True, exist_ok=True)
     final.to_csv(output_file)
 
     # Generating examples
     if ex:
-        examples.generate(output_file)
+        examples.generate(str(output_file))
