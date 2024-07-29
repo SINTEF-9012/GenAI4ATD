@@ -1,4 +1,5 @@
 import math
+import os
 import pandas as pd
 import json
 import common.utils as utils
@@ -26,7 +27,7 @@ def main(input_path: str, output_path: str, repo_path: str, language: str, atdi_
     """
     smell_characteristics_keep: list = ["vertexId", "ATDI", "Severity", "Size", "LOCDensity", "NumberOfEdge"]
 
-    smell_characteristics = pd.read_csv(input_path + "smell-characteristics.csv", sep=',')
+    smell_characteristics = pd.read_csv(os.path.join(input_path, "smell-characteristics.csv"), sep=',')
 
     smells_by_version: dict = track_smells(smell_characteristics, smell_characteristics_keep, repo_path, language,
                                            number_of_ver, atdi_var_diff, atdi_var_commit_history)
@@ -39,10 +40,10 @@ def main(input_path: str, output_path: str, repo_path: str, language: str, atdi_
     if example:
         example_smell: list = generate_examples.generate_examples(smell_list)
 
-        example_file = open(output_path + "_example.json", "w")
+        example_file = open(os.path.join(output_path, os.path.split(input_path)[-1]) + "_example.json", "w")
         example_file.write(json.dumps(example_smell))
 
-    file = open(output_path + ".json", "w")
+    file = open(os.path.join(output_path, os.path.split(input_path)[-1]) + "_smell_track.json", "w")
     file.write(json.dumps(smell_list))
 
 

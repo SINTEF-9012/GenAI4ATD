@@ -18,10 +18,10 @@ def merger(input_path: str, output_path: str, language: str, repo_path: str, loc
     :param ex: Whether to write an examples file
     """
     # Retrieving the data
-    component_metrics = pd.read_csv(input_path + "component-metrics.csv", sep=',')
-    component_dependencies = pd.read_csv(input_path + "component-dependencies.csv", sep=',')
-    smell_affects = pd.read_csv(input_path + "smell-affects.csv", sep=',')
-    smell_characteristics = pd.read_csv(input_path + "smell-characteristics.csv", sep=',')
+    component_metrics = pd.read_csv(os.path.join(input_path, "component-metrics.csv"), sep=',')
+    component_dependencies = pd.read_csv(os.path.join(input_path, "component-dependencies.csv"), sep=',')
+    smell_affects = pd.read_csv(os.path.join(input_path, "smell-affects.csv"), sep=',')
+    smell_characteristics = pd.read_csv(os.path.join(input_path, "smell-characteristics.csv"), sep=',')
 
     # Removing the columns that we are not interested in
     columns_to_remove = [["versionIndex", "versionDate"],  # common
@@ -43,13 +43,15 @@ def merger(input_path: str, output_path: str, language: str, repo_path: str, loc
                       right_on=["fromId", "versionId", "project"])
 
     components_from = pd.merge(component_metrics, component_dependencies, how="inner",
-                              left_on=["vertexId", "versionId", "project"], right_on=["fromId", "versionId", "project"],
-                              suffixes=("_componentsFrom", "_componentsFromDependencies"))
+                               left_on=["vertexId", "versionId", "project"],
+                               right_on=["fromId", "versionId", "project"],
+                               suffixes=("_componentsFrom", "_componentsFromDependencies"))
     components_to = pd.merge(component_metrics, component_dependencies, how="inner",
-                            left_on=["vertexId", "versionId", "project"], right_on=["toId", "versionId", "project"],
-                            suffixes=("_componentsTo", "_componentsToDependencies"))
+                             left_on=["vertexId", "versionId", "project"], right_on=["toId", "versionId", "project"],
+                             suffixes=("_componentsTo", "_componentsToDependencies"))
     components_all = pd.merge(components_from, components_to, how="inner", left_on=["edgeId", "versionId", "project"],
-                             right_on=["edgeId", "versionId", "project"], suffixes=("_componentsFrom", "_componentsTo"))
+                              right_on=["edgeId", "versionId", "project"],
+                              suffixes=("_componentsFrom", "_componentsTo"))
 
     components = pd.merge(components_all, smell_affects, how="inner",
                           left_on=["vertexId_componentsFrom", "versionId", "project"],
@@ -70,8 +72,8 @@ def merger(input_path: str, output_path: str, language: str, repo_path: str, loc
                                                            row["name_componentsFrom"], path_main_package, language)
 
                     full_locs: str = ""
-                    for l in locs:
-                        full_locs += l[0] + "#" + l[1] + "~"
+                    for line in locs:
+                        full_locs += line[0] + "#" + line[1] + "~"
                     final.at[index, "Full_LOCS"] = full_locs[:-1]
         else:
             raise AttributeError("missing repo path, use --repo or -r")
@@ -85,7 +87,7 @@ def merger(input_path: str, output_path: str, language: str, repo_path: str, loc
                 final = final[:index]
                 break
 
-    output_file: str = output_path + "-" + os.path.split(input_path)[-1] + "-merged.csv"
+    output_file: str = os.path.join(output_path, os.path.split(input_path)[-1]) + "-merged.csv"
     final.to_csv(output_file)
 
     # Generating examples

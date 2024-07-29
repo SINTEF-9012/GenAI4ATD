@@ -1,12 +1,4 @@
-import platform
 import os
-
-# These functions are inconstants in how they manage paths, these should be rewritten to use the os module everywhere
-
-if platform.system() == "Windows":
-    separator: str = "\\"
-else:
-    separator: str = "/"
 
 
 def get_paths_main_packages(repo_path: str, language: str) -> list:
@@ -23,7 +15,7 @@ def get_paths_main_packages(repo_path: str, language: str) -> list:
             for name in dirs:
                 if ((os.path.join(root, name).endswith(os.path.join("main", "java"))) or
                         (os.path.join(root, name).endswith(os.path.join("test", "java")))):
-                    paths_main_packages.append(os.path.join(root, name) + separator)
+                    paths_main_packages.append(os.path.join(root, name))
     else:
         raise AttributeError("Language unsupported")
 
@@ -38,7 +30,7 @@ def convert_component_to_path(component: str, language: str, is_unit: bool) -> s
     :param is_unit: Whether the component is unit or a container
     :return: The path to the component
     """
-    unit_path: str = component.replace(".", separator)
+    unit_path: str = component.replace(".", os.path.sep)
 
     if is_unit:
         if language == "JAVA":
@@ -61,8 +53,9 @@ def get_full_path(component: str, repo_path: str, language: str, is_unit: bool) 
     component = convert_component_to_path(component, language, is_unit)
     path_main_packages: list = get_paths_main_packages(repo_path, language)
     for main_package in path_main_packages:
-        if os.path.isfile(main_package + component) or os.path.isdir(main_package + component):
-            return main_package + component
+        if (os.path.isfile(os.path.join(main_package, component)) or
+                os.path.isdir(os.path.join(main_package, component))):
+            return os.path.join(main_package, component)
 
 
 def get_unit_list_from_container_list(containers: str, repo_path: str, language: str) -> list:

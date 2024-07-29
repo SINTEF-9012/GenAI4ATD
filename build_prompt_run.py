@@ -1,4 +1,5 @@
 import argparse
+import os.path
 import llm_prompting.PromptBuilder as PromptBuilder
 
 parser = argparse.ArgumentParser(prog="arcan prompt builder", description="Build prompts based on Arcan Merger output")
@@ -30,9 +31,9 @@ if json and multiple:
 
 if json:
     prompt_builder = PromptBuilder.PromptBuilderJSON()
-    output_path += "json/"
+    os.path.join(output_path, "json")
 else:
     prompt_builder = PromptBuilder.PromptBuilderNL()
-    output_path += "nl/"
+    os.path.join(output_path, "json")
 
-prompt_builder.build_prompt(input_path, output_path, language, dependencies, linesofcodes, definitions, multiple)
+prompt_builder.build_prompt(input_path, language, output_path, dependencies, linesofcodes, multiple, definitions)

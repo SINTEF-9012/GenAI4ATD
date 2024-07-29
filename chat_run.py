@@ -1,4 +1,6 @@
 import argparse
+import os.path
+
 import llm_prompting.chat_llm as chat_llm
 import llm_prompting.extract_prompts as extract_prompts
 import llm_prompting.chat_converter as chat_converter
@@ -26,25 +28,25 @@ api_url: str = args.api_url
 model: str = args.model
 json: bool = args.json
 definitions: bool = args.definitions
-evo: bool = args.evo
+evo: bool = args.evolution
 
 if (json and evo) or (definitions and evo):
     raise ValueError("incompatible arguments")
 
 if json:
     prompts_list = extract_prompts.extract_prompts_json(input_path, definitions)
-    output_path += "chats-single-version/json/"
+    output_path = os.path.join(output_path, "chats-single-version", "json")
 elif evo:
     prompts_list = extract_prompts.extract_prompts_evo(input_path)
-    output_path += "chats-evo/"
+    output_path = os.path.join(output_path, "chats-evo")
 else:
     prompts_list = extract_prompts.extract_prompts_nl(input_path)
-    output_path += "chats-single-version/nl/"
+    output_path = os.path.join(output_path, "chats-single-version", "nl")
 
 if definitions:
-    output_path += "v2/"
+    output_path = os.path.join(output_path, "v2")
 else:
-    output_path += "v1/"
+    output_path = os.path.join(output_path, "v1")
 
 chat_file = chat_llm.chat(api_url, model, prompts_list, output_path)
 

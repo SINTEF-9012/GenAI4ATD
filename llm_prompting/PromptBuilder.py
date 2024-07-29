@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import pandas as pd
+import os
 import json
 from common.utils import format_column_name
 from pathlib import Path
@@ -18,15 +19,16 @@ def define_file_name(prompt_output: str, write_dependencies_bool: bool = False, 
     for the JSON prompt builder, as we abandoned using natural language at this point
     :return:
     """
-    file_name_builder: list[str] = [prompt_output]
+    path_builder: list[str] = [prompt_output]
+    file_name_builder: list[str] = []
 
     if write_def:
-        file_name_builder.append("defs/")
+        path_builder.append("defs")
     else:
-        file_name_builder.append("nodefs/")
+        path_builder.append("nodefs")
 
     if as_multiple_prompts:
-        file_name_builder.append('multiple-queries/')
+        path_builder.append('multiple-queries')
 
     file_name_builder.append('prompt')
 
@@ -36,7 +38,9 @@ def define_file_name(prompt_output: str, write_dependencies_bool: bool = False, 
     if write_loc:
         file_name_builder.append("_and_LOCS")
 
-    return "".join(file_name_builder)
+    path_builder.append("".join(file_name_builder))
+
+    return str(os.path.join(*path_builder))
 
 
 class PromptBuilder(ABC):
