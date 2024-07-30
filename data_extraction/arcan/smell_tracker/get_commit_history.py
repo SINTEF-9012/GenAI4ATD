@@ -17,13 +17,15 @@ def get_commits_history_all_units(first_commit_id: str, last_commit_id: str, uni
     """
     commits: list = []
 
-    for unit in unit_list:
-        commit_history: list = get_commits_history_one_unit(unit, first_commit_id, last_commit_id, repo_path)
+    if not repo_path.endswith(os.path.sep):
+        repo_path += os.path.sep
 
-        if commit_history:
+    for unit in unit_list:
+
+        if unit is not None:
             commits.append({
                 "component": unit,
-                "commit_history": commit_history
+                "commit_history": get_commits_history_one_unit(unit, first_commit_id, last_commit_id, repo_path)
             })
 
     return commits
@@ -40,22 +42,17 @@ def get_commits_history_one_unit(unit: str, first_commit_id: str, last_commit_id
     """
     commits_history: list = []
 
-    if unit is not None:
-        unit = unit.replace("/", "\\")
-
     if (unit, first_commit_id, last_commit_id) not in commits_histories_known:
         repo = git.Repo(repo_path)
 
         current_commit = repo.commit(last_commit_id)
 
         while current_commit.hexsha != first_commit_id:
-            for file in current_commit.stats.files:
-
-                if os.path.join(repo_path, file).replace("/", "\\") == unit:
-                    commits_history.append({
-                        "commit_id": current_commit.hexsha,
-                        "message": current_commit.message,
-                    })
+            if unit.replace(repo_path, "").replace(os.path.sep, "/") in current_commit.stats.files:
+                commits_history.append({
+                    "commit_id": current_commit.hexsha,
+                    "message": current_commit.message
+                })
 
             if current_commit.parents:
                 current_commit = current_commit.parents[0]

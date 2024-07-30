@@ -52,7 +52,7 @@ def get_locs_one_location(lines_number: list, path_main_packages: list, unit_pat
     lines: str = ""
 
     for main_package in path_main_packages:
-        if os.path.isfile(main_package + unit_path):
+        if os.path.isfile(os.path.join(main_package, unit_path)):
             for i in range(lines_number[1] - lines_number[0] + 1):
                 lines += linecache.getline(main_package + unit_path, lines_number[0] + i)
 
