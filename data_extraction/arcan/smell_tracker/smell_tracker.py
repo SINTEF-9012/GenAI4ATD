@@ -12,7 +12,8 @@ import data_extraction.arcan.smell_tracker.get_diff as get_diff
 
 
 def main(input_path: str, output_path: str, repo_path: str, language: str, atdi_var_diff: bool = False,
-         atdi_var_commit_history: bool = False, only_last_ver=False, number_of_ver=1000, example=False):
+         atdi_var_commit_history: bool = False, filter_commits: bool = False, only_last_ver=False, number_of_ver=1000,
+         example=False):
     """
     Write the smells tracked across versions into a JSON file. Optionally write an examples file.
     :param input_path: Path to the Arcan output directory.
@@ -23,6 +24,8 @@ def main(input_path: str, output_path: str, repo_path: str, language: str, atdi_
     if the smell disappeared between two versions
     :param atdi_var_commit_history: Whether to write the commit history for units involved in a smell when its ATDI
     increased, decreased, or if the smell disappeared between two versions
+    :param filter_commits: Whether to filter the commits, ie: in the commit history of a component involved in a smell,
+    keeping the commit that, for example, adds imports when the smell is a cyclic dependency
     :param only_last_ver: Whether to keep only the smells present in the latest version in the output file
     :param number_of_ver: The number of versions to track smells across
     :param example: Whether to write the examples file.
@@ -32,7 +35,7 @@ def main(input_path: str, output_path: str, repo_path: str, language: str, atdi_
     smell_characteristics = pd.read_csv(os.path.join(input_path, "smell-characteristics.csv"), sep=',')
 
     smells_by_version: dict = track_smells(smell_characteristics, smell_characteristics_keep, repo_path, language,
-                                           number_of_ver, atdi_var_diff, atdi_var_commit_history)
+                                           number_of_ver, atdi_var_diff, atdi_var_commit_history, filter_commits)
 
     smell_list: list = write_smells_list(smells_by_version)
 
@@ -52,7 +55,7 @@ def main(input_path: str, output_path: str, repo_path: str, language: str, atdi_
 
 
 def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: str, language: str, number_of_ver: int,
-                 atdi_var_diff: bool, atdi_var_commit_history: bool) -> dict:
+                 atdi_var_diff: bool, atdi_var_commit_history: bool, filter_commits: bool) -> dict:
     """
     Track smells across versions
     :param smell_characteristics: Pandas dataframe containing smell characteristics retrieved from the Arcan output
@@ -64,6 +67,8 @@ def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: s
      if the smell disappeared between two versions
     :param atdi_var_commit_history: Whether to write the commit history for units involved in a smell when its ATDI
     increased, decreased, or if the smell disappeared between two versions
+    :param filter_commits: Whether to filter the commits, ie: in the commit history of a component involved in a smell,
+    keeping the commit that, for example, adds imports when the smell is a cyclic dependency
     :return: A dictionary containing the smells tracked across versions, key being each versions we analysed, and
     value the list of smells appearing in that version. The smell are stored under the last version in which they
     appeared, or the version in which they disappeared if that is the case.
@@ -88,7 +93,8 @@ def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: s
 
             smells_by_version = check_for_smells_that_disappeared(smells_by_version, previous_version_id,
                                                                   repo_path, language, atdi_var_diff,
-                                                                  atdi_var_commit_history, paths_main_packages)
+                                                                  atdi_var_commit_history, filter_commits,
+                                                                  paths_main_packages)
 
             if versions_analysed == number_of_ver:
                 break
@@ -111,7 +117,8 @@ def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: s
                                                             smell_data["characteristics_by_version"][-1]["versionId"],
                                                             row["AffectedElements"], repo_path, language,
                                                             row["AffectedComponentType"], atdi_var_diff,
-                                                            atdi_var_commit_history, paths_main_packages)
+                                                            atdi_var_commit_history, paths_main_packages,
+                                                            row["smellType"], filter_commits)
                         }
                     )
 
@@ -130,11 +137,12 @@ def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: s
                     {
                         "versionId": row["versionId"],
                         "characteristics": write_characteristics(row, smell_characteristics_keep),
-                        "ATDI_var": check_atd_variation(0,0, row["versionId"],
+                        "ATDI_var": check_atd_variation(0, 0, row["versionId"],
                                                         "",
                                                         row["AffectedElements"], repo_path, language,
                                                         row["AffectedComponentType"], atdi_var_diff,
-                                                        atdi_var_commit_history, paths_main_packages)
+                                                        atdi_var_commit_history, paths_main_packages,
+                                                        row["smellType"], filter_commits)
                     }
                 ]
             }
@@ -143,7 +151,7 @@ def track_smells(smell_characteristics, smell_characteristics_keep, repo_path: s
                 smell_data["characteristics_by_version"][-1]["ATDI_var"] = (
                     check_atd_variation(row["ATDI"], 0, row["versionId"], previous_version_id, row["AffectedElements"],
                                         repo_path, language, row["AffectedComponentType"], atdi_var_diff,
-                                        atdi_var_commit_history, paths_main_packages))
+                                        atdi_var_commit_history, paths_main_packages, row["smellType"], filter_commits))
 
             smells_by_version[row["versionId"]][(row["smellType"], row["AffectedElements"])] = smell_data
 
@@ -187,7 +195,7 @@ def write_characteristics(row, smell_characteristics_keep) -> dict:
 
 def check_atd_variation(current_atdi: float, old_atdi: float, current_version_id: str, old_version_id: str,
                         components_affected: str, repo_path: str, language: str, component_type: str, diff: bool,
-                        commit_history: bool, paths_main_packages: list) -> dict:
+                        commit_history: bool, paths_main_packages: list, smell_type: str, filter_commits: bool) -> dict:
     """
     Check the ATDI variation between two versions. If there is a variation and the diff and/or commit_history is True,
     write the diff and/or commit history between the two versions of each unit involved in the smell.
@@ -204,6 +212,9 @@ def check_atd_variation(current_atdi: float, old_atdi: float, current_version_id
     :param commit_history: Whether to write the commit history for units involved in a smell when its ATDI
     increased, decreased, or if the smell disappeared between two versions
     :param paths_main_packages: A list of the main and test packages
+    :param smell_type:
+    :param filter_commits: Whether to filter the commits, ie: in the commit history of a component involved in a smell,
+    keeping the commit that, for example, adds imports when the smell is a cyclic dependency
     :return: A dictionary containing the variation and the diffs and/or commit histories if applicable
     """
     atdi_var: dict = {}
@@ -239,14 +250,15 @@ def check_atd_variation(current_atdi: float, old_atdi: float, current_version_id
             if commit_history:
                 atdi_var["commit_history"] = get_commit_history.get_commits_history_all_units(old_version_id,
                                                                                               current_version_id,
-                                                                                              unit_list,
-                                                                                              repo_path)
+                                                                                              unit_list, repo_path,
+                                                                                              smell_type,
+                                                                                              filter_commits, language)
 
     return atdi_var
 
 
 def check_for_smells_that_disappeared(smells_by_version: dict, last_version: str, repo_path: str, language: str,
-                                      atdi_var_diff: bool, atdi_var_commit_history: bool,
+                                      atdi_var_diff: bool, atdi_var_commit_history: bool, filter_commits: bool,
                                       paths_main_packages: list) -> dict:
     """
     Check the smells that disappeared in a version, update their entry in smells_by_version
@@ -260,6 +272,8 @@ def check_for_smells_that_disappeared(smells_by_version: dict, last_version: str
      if the smell disappeared between two versions
     :param atdi_var_commit_history: Whether to write the commit history for units involved in a smell when its ATDI
     increased, decreased, or if the smell disappeared between two versions
+    :param filter_commits: Whether to filter the commits, ie: in the commit history of a component involved in a smell,
+    keeping the commit that, for example, adds imports when the smell is a cyclic dependency
     :param paths_main_packages: A list of the main and test packages
     :return: A dictionary containing the smells tracked across versions, key being each versions we analysed, and
     value the list of smells appearing in that version. The smell are stored under the last version in which they
@@ -280,7 +294,8 @@ def check_for_smells_that_disappeared(smells_by_version: dict, last_version: str
                                                             smell_data["characteristics_by_version"][-1]["versionId"],
                                                             smell_data["components_affected"], repo_path, language,
                                                             smell_data["type_components_affected"], atdi_var_diff,
-                                                            atdi_var_commit_history, paths_main_packages)
+                                                            atdi_var_commit_history, paths_main_packages,
+                                                            smell_data["type"], filter_commits)
                         }
                     )
 
