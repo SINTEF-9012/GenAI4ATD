@@ -1,3 +1,4 @@
+import os.path
 from pathlib import Path
 
 import requests
@@ -20,7 +21,7 @@ def chat(api_url: str, model: str, prompts_list: list, output: str) -> str:
         response = send_prompt(api_url, model, messages)
         messages.append(response)
 
-    file_name: str = output + ".json"
+    file_name: str = os.path.join(output, "chat.json")
 
     file = Path(file_name)
     file.parent.mkdir(parents=True, exist_ok=True)
